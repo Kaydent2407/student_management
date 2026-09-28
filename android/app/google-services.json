@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "195941919654",
+    "project_id": "kdclpm",
+    "storage_bucket": "kdclpm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195941919654:android:d6c52f36ad1de5f6d3fd67",
+        "android_client_info": {
+          "package_name": "com.example.student_management"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6RYa68rUoRIQHWn3JeYtubQngx1SGZds"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
