@@ -13,6 +13,7 @@ import 'subjects/subjects_page.dart';
 import 'grades/grades_page.dart';
 import 'admin/account_management_page.dart';
 import 'departments/department_major_page.dart';
+import 'registrations/course_registration_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -46,9 +47,7 @@ class _HomePageState extends State<HomePage> {
         return const GradesPage();
 
       case 5:
-        return const PlaceholderPage(
-          title: 'Đăng ký môn học',
-        );
+        return const CourseRegistrationPage();
 
       case 6:
         return const DepartmentMajorPage();
@@ -87,9 +86,7 @@ class _HomePageState extends State<HomePage> {
         return const DashboardPage();
 
       case 1:
-        return const PlaceholderPage(
-          title: 'Đăng ký môn học',
-        );
+        return const CourseRegistrationPage();
 
       case 2:
         return const GradesPage();
