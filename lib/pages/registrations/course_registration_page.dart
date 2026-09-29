@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../../services/registration_service.dart';
 
 class CourseRegistrationPage extends StatefulWidget {
-  const CourseRegistrationPage({super.key});
+  const CourseRegistrationPage({
+    super.key,
+  });
 
   @override
   State<CourseRegistrationPage> createState() =>
@@ -17,69 +19,53 @@ class _CourseRegistrationPageState
   final RegistrationService _service =
       RegistrationService();
 
-  final TextEditingController _searchController =
+  final TextEditingController
+      _searchController =
       TextEditingController();
 
   String _searchText = '';
 
-  final Set<String> _processingSubjects = {};
+  final Set<String> _processing =
+      {};
 
-  // =========================================================
-  // MESSAGE
-  // =========================================================
-
-  void _showMessage(String message) {
+  void _showMessage(
+    String message,
+  ) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
       SnackBar(
-        content: Text(message),
+        content:
+            Text(message),
       ),
     );
   }
 
-  // =========================================================
-  // FORMAT DATE
-  // =========================================================
-
-  String _formatDate(dynamic value) {
-    if (value is! Timestamp) {
-      return '-';
-    }
-
-    final date = value.toDate();
-
-    String twoDigits(int value) {
-      return value.toString().padLeft(2, '0');
-    }
-
-    return '${twoDigits(date.day)}/'
-        '${twoDigits(date.month)}/'
-        '${date.year} '
-        '${twoDigits(date.hour)}:'
-        '${twoDigits(date.minute)}';
-  }
-
-  // =========================================================
-  // ĐĂNG KÝ
-  // =========================================================
-
-  Future<void> _registerSubject({
+  Future<void> _register({
     required String subjectId,
-    required Map<String, dynamic> subjectData,
+    required Map<String, dynamic>
+        subject,
   }) async {
-    if (_processingSubjects.contains(subjectId)) {
+    if (_processing.contains(
+      subjectId,
+    )) {
       return;
     }
 
     setState(() {
-      _processingSubjects.add(subjectId);
+      _processing.add(
+        subjectId,
+      );
     });
 
     try {
-      await _service.registerSubject(
-        subjectId: subjectId,
-        subjectData: subjectData,
+      await _service
+          .registerSubject(
+        subjectId:
+            subjectId,
+        subjectData:
+            subject,
       );
 
       _showMessage(
@@ -87,15 +73,16 @@ class _CourseRegistrationPageState
       );
     } catch (e) {
       _showMessage(
-        e.toString().replaceFirst(
-              'Exception: ',
-              '',
-            ),
+        e.toString()
+            .replaceFirst(
+          'Exception: ',
+          '',
+        ),
       );
     } finally {
       if (mounted) {
         setState(() {
-          _processingSubjects.remove(
+          _processing.remove(
             subjectId,
           );
         });
@@ -103,25 +90,22 @@ class _CourseRegistrationPageState
     }
   }
 
-  // =========================================================
-  // HỦY MÔN
-  // =========================================================
-
-  Future<void> _cancelRegistration({
+  Future<void> _cancel({
     required String subjectId,
     required String subjectName,
   }) async {
-    final confirmed =
+    final confirm =
         await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
+      builder:
+          (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Hủy đăng ký môn học',
+          title:
+              const Text(
+            'Hủy đăng ký',
           ),
           content: Text(
-            'Bạn có chắc muốn hủy đăng ký môn '
-            '"$subjectName" không?',
+            'Bạn có chắc muốn hủy môn "$subjectName" không?',
           ),
           actions: [
             TextButton(
@@ -130,7 +114,10 @@ class _CourseRegistrationPageState
                   dialogContext,
                 ).pop(false);
               },
-              child: const Text('Không'),
+              child:
+                  const Text(
+                'Không',
+              ),
             ),
             FilledButton(
               onPressed: () {
@@ -138,7 +125,8 @@ class _CourseRegistrationPageState
                   dialogContext,
                 ).pop(true);
               },
-              child: const Text(
+              child:
+                  const Text(
                 'Hủy đăng ký',
               ),
             ),
@@ -147,87 +135,15 @@ class _CourseRegistrationPageState
       },
     );
 
-    if (confirmed != true) return;
-
-    if (_processingSubjects.contains(subjectId)) {
+    if (confirm != true) {
       return;
     }
 
-    setState(() {
-      _processingSubjects.add(subjectId);
-    });
-
     try {
-      await _service.cancelMyRegistration(
-        subjectId: subjectId,
-      );
-
-      _showMessage(
-        'Đã hủy đăng ký môn học.',
-      );
-    } catch (e) {
-      _showMessage(
-        'Không thể hủy đăng ký: $e',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _processingSubjects.remove(
+      await _service
+          .cancelMyRegistration(
+        subjectId:
             subjectId,
-          );
-        });
-      }
-    }
-  }
-
-  // =========================================================
-  // ADMIN HỦY
-  // =========================================================
-
-  Future<void> _adminDeleteRegistration({
-    required String registrationId,
-    required String studentName,
-    required String subjectName,
-  }) async {
-    final confirmed =
-        await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Hủy đăng ký',
-          ),
-          content: Text(
-            'Hủy đăng ký môn "$subjectName" '
-            'của sinh viên "$studentName"?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(false);
-              },
-              child: const Text('Không'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(true);
-              },
-              child: const Text('Xác nhận'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _service.deleteRegistration(
-        registrationId,
       );
 
       _showMessage(
@@ -235,19 +151,22 @@ class _CourseRegistrationPageState
       );
     } catch (e) {
       _showMessage(
-        'Không thể hủy đăng ký: $e',
+        e.toString()
+            .replaceFirst(
+          'Exception: ',
+          '',
+        ),
       );
     }
   }
 
-  // =========================================================
-  // BUILD
-  // =========================================================
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     final user =
-        FirebaseAuth.instance.currentUser;
+        FirebaseAuth
+            .instance.currentUser;
 
     if (user == null) {
       return const Center(
@@ -258,13 +177,17 @@ class _CourseRegistrationPageState
     }
 
     return StreamBuilder<
-        DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
+        DocumentSnapshot<
+            Map<String, dynamic>>>(
+      stream: FirebaseFirestore
+          .instance
           .collection('users')
           .doc(user.uid)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState ==
+      builder:
+          (context, userSnapshot) {
+        if (userSnapshot
+                .connectionState ==
             ConnectionState.waiting) {
           return const Center(
             child:
@@ -272,16 +195,10 @@ class _CourseRegistrationPageState
           );
         }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Lỗi: ${snapshot.error}',
-            ),
-          );
-        }
-
-        if (!snapshot.hasData ||
-            !snapshot.data!.exists) {
+        if (!userSnapshot
+                .hasData ||
+            !userSnapshot
+                .data!.exists) {
           return const Center(
             child: Text(
               'Không tìm thấy tài khoản.',
@@ -290,106 +207,144 @@ class _CourseRegistrationPageState
         }
 
         final userData =
-            snapshot.data!.data()!;
+            userSnapshot
+                .data!
+                .data()!;
 
         final role =
-            userData['role']?.toString() ??
+            userData['role']
+                    ?.toString() ??
                 'student';
 
         if (role == 'admin') {
           return _buildAdminPage();
         }
 
-        return _buildStudentPage(
-          userData,
+        return FutureBuilder<
+            Map<String, dynamic>>(
+          future:
+              _service
+                  .getActiveSemester(),
+          builder:
+              (context,
+                  semesterSnapshot) {
+            if (semesterSnapshot
+                    .connectionState ==
+                ConnectionState
+                    .waiting) {
+              return const Center(
+                child:
+                    CircularProgressIndicator(),
+              );
+            }
+
+            if (semesterSnapshot
+                .hasError) {
+              return Center(
+                child: Text(
+                  semesterSnapshot
+                      .error
+                      .toString()
+                      .replaceFirst(
+                        'Exception: ',
+                        '',
+                      ),
+                ),
+              );
+            }
+
+            final semester =
+                semesterSnapshot
+                    .data!;
+
+            final semesterCode =
+                semester[
+                        'semesterCode']
+                    .toString();
+
+            final semesterName =
+                semester[
+                            'semesterName']
+                        ?.toString() ??
+                    semesterCode;
+
+            return _buildStudentPage(
+              userData:
+                  userData,
+              semesterCode:
+                  semesterCode,
+              semesterName:
+                  semesterName,
+            );
+          },
         );
       },
     );
   }
 
-  // =========================================================
-  // STUDENT PAGE
-  // =========================================================
-
-  Widget _buildStudentPage(
-    Map<String, dynamic> userData,
-  ) {
-    final studentCode =
-        userData['studentCode']
-                ?.toString() ??
-            '';
-
-    final fullName =
-        userData['fullName']?.toString() ??
-            '';
-
+  Widget _buildStudentPage({
+    required Map<String, dynamic>
+        userData,
+    required String semesterCode,
+    required String semesterName,
+  }) {
     return Padding(
-      padding: const EdgeInsets.all(30),
+      padding:
+          const EdgeInsets.all(30),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
-          // HEADER
           Row(
             mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+                MainAxisAlignment
+                    .spaceBetween,
             children: [
               const Column(
                 crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    CrossAxisAlignment
+                        .start,
                 children: [
                   Text(
                     'Đăng ký môn học',
-                    style: TextStyle(
+                    style:
+                        TextStyle(
                       fontSize: 28,
                       fontWeight:
-                          FontWeight.bold,
+                          FontWeight
+                              .bold,
                     ),
                   ),
-                  SizedBox(height: 5),
+                  SizedBox(
+                    height: 5,
+                  ),
                   Text(
-                    'Chọn các môn học bạn muốn đăng ký',
-                    style: TextStyle(
-                      color: Colors.grey,
+                    'Chọn môn học muốn đăng ký',
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.grey,
                     ),
                   ),
                 ],
               ),
 
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      const Color(0xffeff6ff),
-                  borderRadius:
-                      BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
+              Chip(
+                avatar:
                     const Icon(
-                      Icons.person_outline,
-                      color:
-                          Color(0xff2563eb),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$studentCode - $fullName',
-                      style: const TextStyle(
-                        fontWeight:
-                            FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                  Icons
+                      .calendar_month_outlined,
+                ),
+                label: Text(
+                  semesterName,
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(
+            height: 25,
+          ),
 
           SizedBox(
             width: 430,
@@ -409,46 +364,45 @@ class _CourseRegistrationPageState
                 hintText:
                     'Tìm mã môn hoặc tên môn...',
                 prefixIcon:
-                    Icon(Icons.search),
+                    Icon(
+                  Icons.search,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(
+            height: 22,
+          ),
 
           Expanded(
             child: StreamBuilder<
                 QuerySnapshot<
-                    Map<String, dynamic>>>(
+                    Map<String,
+                        dynamic>>>(
               stream:
-                  _service.getMyRegistrations(),
+                  _service
+                      .getMyRegistrations(
+                semesterCode:
+                    semesterCode,
+              ),
               builder:
-                  (context, registrationSnapshot) {
-                if (registrationSnapshot
+                  (context,
+                      regSnapshot) {
+                if (regSnapshot
                         .connectionState ==
-                    ConnectionState.waiting) {
+                    ConnectionState
+                        .waiting) {
                   return const Center(
                     child:
                         CircularProgressIndicator(),
                   );
                 }
 
-                if (registrationSnapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Không thể tải đăng ký: '
-                      '${registrationSnapshot.error}',
-                    ),
-                  );
-                }
-
-                final registrations =
-                    registrationSnapshot
-                            .data?.docs ??
-                        [];
-
-                final registeredSubjectIds =
-                    registrations
+                final registeredIds =
+                    (regSnapshot
+                                .data?.docs ??
+                            [])
                         .map(
                           (doc) => doc
                                   .data()[
@@ -460,11 +414,14 @@ class _CourseRegistrationPageState
 
                 return StreamBuilder<
                     QuerySnapshot<
-                        Map<String, dynamic>>>(
+                        Map<String,
+                            dynamic>>>(
                   stream:
-                      _service.getSubjects(),
+                      _service
+                          .getSubjects(),
                   builder:
-                      (context, subjectSnapshot) {
+                      (context,
+                          subjectSnapshot) {
                     if (subjectSnapshot
                             .connectionState ==
                         ConnectionState
@@ -475,119 +432,74 @@ class _CourseRegistrationPageState
                       );
                     }
 
-                    if (subjectSnapshot
-                        .hasError) {
-                      return Center(
-                        child: Text(
-                          'Không thể tải môn học: '
-                          '${subjectSnapshot.error}',
-                        ),
-                      );
-                    }
-
                     final subjects =
-                        subjectSnapshot
-                                .data?.docs ??
-                            [];
+                        (subjectSnapshot
+                                    .data
+                                    ?.docs ??
+                                [])
+                            .where(
+                      (doc) {
+                        final data =
+                            doc.data();
 
-                    final filtered =
-                        subjects.where((doc) {
-                      final data =
-                          doc.data();
+                        final text =
+                            '${data['subjectCode'] ?? ''} '
+                                    '${data['subjectName'] ?? ''}'
+                                .toLowerCase();
 
-                      final code =
-                          (data['subjectCode'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
+                        return text
+                            .contains(
+                          _searchText,
+                        );
+                      },
+                    ).toList();
 
-                      final name =
-                          (data['subjectName'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
-
-                      return code.contains(
-                              _searchText) ||
-                          name.contains(
-                              _searchText);
-                    }).toList();
-
-                    if (filtered.isEmpty) {
+                    if (subjects
+                        .isEmpty) {
                       return const Center(
-                        child: Column(
-                          mainAxisSize:
-                              MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons
-                                  .menu_book_outlined,
-                              size: 55,
-                              color:
-                                  Colors.grey,
-                            ),
-                            SizedBox(
-                              height: 12,
-                            ),
-                            Text(
-                              'Chưa có môn học.',
-                              style: TextStyle(
-                                color:
-                                    Colors.grey,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          'Chưa có môn học.',
                         ),
                       );
                     }
 
-                    return GridView.builder(
+                    return GridView
+                        .builder(
                       gridDelegate:
                           const SliverGridDelegateWithMaxCrossAxisExtent(
                         maxCrossAxisExtent:
-                            420,
+                            390,
                         mainAxisExtent:
-                            210,
+                            205,
                         crossAxisSpacing:
                             18,
                         mainAxisSpacing:
                             18,
                       ),
                       itemCount:
-                          filtered.length,
+                          subjects
+                              .length,
                       itemBuilder:
-                          (context, index) {
+                          (context,
+                              index) {
                         final doc =
-                            filtered[index];
+                            subjects[
+                                index];
 
                         final data =
                             doc.data();
 
-                        final code =
-                            data['subjectCode']
-                                    ?.toString() ??
-                                '';
-
-                        final name =
-                            data['subjectName']
-                                    ?.toString() ??
-                                '';
-
-                        final credits =
-                            data['credits'] ??
-                                0;
-
                         final registered =
-                            registeredSubjectIds
+                            registeredIds
                                 .contains(
-                                  doc.id,
-                                );
+                          doc.id,
+                        );
 
                         final processing =
-                            _processingSubjects
+                            _processing
                                 .contains(
-                                  doc.id,
-                                );
+                          doc.id,
+                        );
 
                         return Container(
                           padding:
@@ -596,114 +508,85 @@ class _CourseRegistrationPageState
                           decoration:
                               BoxDecoration(
                             color:
-                                Colors.white,
+                                Colors
+                                    .white,
                             borderRadius:
                                 BorderRadius
-                                    .circular(12),
+                                    .circular(
+                              12,
+                            ),
                             border:
                                 Border.all(
-                              color:
-                                  registered
-                                      ? const Color(
-                                          0xff86efac,
-                                        )
-                                      : const Color(
-                                          0xffe5e7eb,
-                                        ),
+                              color: registered
+                                  ? Colors
+                                      .green
+                                  : const Color(
+                                      0xffe5e7eb,
+                                    ),
                             ),
                           ),
-                          child: Column(
+                          child:
+                              Column(
                             crossAxisAlignment:
                                 CrossAxisAlignment
                                     .start,
                             children: [
                               Row(
                                 children: [
-                                  Container(
-                                    width: 45,
-                                    height: 45,
-                                    decoration:
-                                        BoxDecoration(
-                                      color:
-                                          const Color(
-                                        0xffeff6ff,
-                                      ),
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(
-                                        10,
-                                      ),
-                                    ),
-                                    child:
-                                        const Icon(
-                                      Icons
-                                          .menu_book,
-                                      color:
-                                          Color(
-                                        0xff2563eb,
-                                      ),
+                                  const Icon(
+                                    Icons
+                                        .menu_book_outlined,
+                                    color:
+                                        Color(
+                                      0xff2563eb,
                                     ),
                                   ),
 
                                   const Spacer(),
 
-                                  Container(
-                                    padding:
-                                        const EdgeInsets
-                                            .symmetric(
-                                      horizontal:
-                                          10,
-                                      vertical: 5,
-                                    ),
-                                    decoration:
-                                        BoxDecoration(
-                                      color:
-                                          const Color(
-                                        0xfff3f4f6,
-                                      ),
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(
-                                        20,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '$credits tín chỉ',
+                                  Chip(
+                                    label:
+                                        Text(
+                                      '${data['credits'] ?? 0} tín chỉ',
                                     ),
                                   ),
                                 ],
                               ),
 
                               const SizedBox(
-                                height: 15,
+                                height:
+                                    12,
                               ),
 
                               Text(
-                                code,
+                                data['subjectCode']
+                                        ?.toString() ??
+                                    '',
                                 style:
                                     const TextStyle(
-                                  fontSize: 13,
                                   color:
                                       Colors.grey,
-                                  fontWeight:
-                                      FontWeight
-                                          .w600,
                                 ),
                               ),
 
                               const SizedBox(
-                                height: 4,
+                                height:
+                                    5,
                               ),
 
                               Text(
-                                name,
-                                maxLines: 2,
+                                data['subjectName']
+                                        ?.toString() ??
+                                    '',
+                                maxLines:
+                                    2,
                                 overflow:
                                     TextOverflow
                                         .ellipsis,
                                 style:
                                     const TextStyle(
-                                  fontSize: 17,
+                                  fontSize:
+                                      17,
                                   fontWeight:
                                       FontWeight
                                           .bold,
@@ -713,68 +596,38 @@ class _CourseRegistrationPageState
                               const Spacer(),
 
                               SizedBox(
-                                width:
-                                    double.infinity,
-                                child: registered
-                                    ? OutlinedButton
-                                        .icon(
-                                        onPressed:
-                                            processing
+                                width: double
+                                    .infinity,
+                                child:
+                                    registered
+                                        ? OutlinedButton(
+                                            onPressed: processing
                                                 ? null
                                                 : () {
-                                                    _cancelRegistration(
-                                                      subjectId:
-                                                          doc.id,
-                                                      subjectName:
-                                                          name,
+                                                    _cancel(
+                                                      subjectId: doc.id,
+                                                      subjectName: data['subjectName']?.toString() ?? '',
                                                     );
                                                   },
-                                        icon:
-                                            const Icon(
-                                          Icons
-                                              .close,
-                                        ),
-                                        label:
-                                            const Text(
-                                          'Hủy đăng ký',
-                                        ),
-                                      )
-                                    : FilledButton
-                                        .icon(
-                                        onPressed:
-                                            processing
+                                            child:
+                                                const Text(
+                                              'Hủy đăng ký',
+                                            ),
+                                          )
+                                        : FilledButton(
+                                            onPressed: processing
                                                 ? null
                                                 : () {
-                                                    _registerSubject(
-                                                      subjectId:
-                                                          doc.id,
-                                                      subjectData:
-                                                          data,
+                                                    _register(
+                                                      subjectId: doc.id,
+                                                      subject: data,
                                                     );
                                                   },
-                                        icon:
-                                            processing
-                                                ? const SizedBox(
-                                                    width:
-                                                        17,
-                                                    height:
-                                                        17,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth:
-                                                          2,
-                                                    ),
-                                                  )
-                                                : const Icon(
-                                                    Icons
-                                                        .add,
-                                                  ),
-                                        label: Text(
-                                          processing
-                                              ? 'Đang xử lý...'
-                                              : 'Đăng ký',
-                                        ),
-                                      ),
+                                            child:
+                                                const Text(
+                                              'Đăng ký',
+                                            ),
+                                          ),
                               ),
                             ],
                           ),
@@ -791,13 +644,10 @@ class _CourseRegistrationPageState
     );
   }
 
-  // =========================================================
-  // ADMIN PAGE
-  // =========================================================
-
   Widget _buildAdminPage() {
     return Padding(
-      padding: const EdgeInsets.all(30),
+      padding:
+          const EdgeInsets.all(30),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
@@ -806,386 +656,85 @@ class _CourseRegistrationPageState
             'Quản lý đăng ký môn học',
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
 
-          const SizedBox(height: 5),
-
-          const Text(
-            'Danh sách sinh viên đã đăng ký môn học',
-            style: TextStyle(
-              color: Colors.grey,
-            ),
+          const SizedBox(
+            height: 20,
           ),
 
-          const SizedBox(height: 25),
+          Expanded(
+            child: StreamBuilder<
+                QuerySnapshot<
+                    Map<String,
+                        dynamic>>>(
+              stream:
+                  _service
+                      .getAllRegistrations(),
+              builder:
+                  (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  );
+                }
 
-          SizedBox(
-            width: 430,
-            child: TextField(
-              controller:
-                  _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchText =
-                      value
-                          .trim()
-                          .toLowerCase();
-                });
+                final docs =
+                    snapshot.data!.docs;
+
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Chưa có đăng ký.',
+                    ),
+                  );
+                }
+
+                return ListView
+                    .builder(
+                  itemCount:
+                      docs.length,
+                  itemBuilder:
+                      (context,
+                          index) {
+                    final data =
+                        docs[index]
+                            .data();
+
+                    return Card(
+                      child: ListTile(
+                        leading:
+                            const Icon(
+                          Icons.school,
+                        ),
+                        title: Text(
+                          '${data['studentCode'] ?? ''} - ${data['studentName'] ?? ''}',
+                        ),
+                        subtitle: Text(
+                          '${data['subjectCode'] ?? ''} - '
+                          '${data['subjectName'] ?? ''}\n'
+                          '${data['semesterName'] ?? ''} • '
+                          '${data['credits'] ?? 0} tín chỉ',
+                        ),
+                      ),
+                    );
+                  },
+                );
               },
-              decoration:
-                  const InputDecoration(
-                hintText:
-                    'Tìm MSSV, sinh viên hoặc môn học...',
-                prefixIcon:
-                    Icon(Icons.search),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 22),
-
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.circular(12),
-                border: Border.all(
-                  color:
-                      const Color(0xffe5e7eb),
-                ),
-              ),
-              child: StreamBuilder<
-                  QuerySnapshot<
-                      Map<String, dynamic>>>(
-                stream:
-                    _service.getAllRegistrations(),
-                builder:
-                    (context, snapshot) {
-                  if (snapshot
-                          .connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                      child:
-                          CircularProgressIndicator(),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Lỗi: ${snapshot.error}',
-                      ),
-                    );
-                  }
-
-                  final registrations =
-                      snapshot.data?.docs ??
-                          [];
-
-                  final filtered =
-                      registrations.where(
-                    (doc) {
-                      final data =
-                          doc.data();
-
-                      final studentCode =
-                          (data['studentCode'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
-
-                      final studentName =
-                          (data['studentName'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
-
-                      final subjectCode =
-                          (data['subjectCode'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
-
-                      final subjectName =
-                          (data['subjectName'] ??
-                                  '')
-                              .toString()
-                              .toLowerCase();
-
-                      return studentCode
-                              .contains(
-                                _searchText,
-                              ) ||
-                          studentName.contains(
-                            _searchText,
-                          ) ||
-                          subjectCode.contains(
-                            _searchText,
-                          ) ||
-                          subjectName.contains(
-                            _searchText,
-                          );
-                    },
-                  ).toList();
-
-                  return Column(
-                    children: [
-                      _buildAdminHeader(),
-
-                      Expanded(
-                        child: filtered.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Chưa có đăng ký môn học.',
-                                  style:
-                                      TextStyle(
-                                    color:
-                                        Colors.grey,
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount:
-                                    filtered.length,
-                                itemBuilder:
-                                    (context,
-                                        index) {
-                                  return _buildAdminRow(
-                                    filtered[
-                                        index],
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  );
-                },
-              ),
             ),
           ),
         ],
       ),
     );
   }
-
-  // =========================================================
-  // ADMIN HEADER
-  // =========================================================
-
-  Widget _buildAdminHeader() {
-    const style = TextStyle(
-      fontWeight: FontWeight.w600,
-      color: Color(0xff374151),
-    );
-
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-      ),
-      decoration: const BoxDecoration(
-        color: Color(0xfff8fafc),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            flex: 15,
-            child: Text(
-              'MSSV',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 22,
-            child: Text(
-              'Sinh viên',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 14,
-            child: Text(
-              'Mã môn',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 25,
-            child: Text(
-              'Môn học',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 10,
-            child: Text(
-              'Tín chỉ',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 18,
-            child: Text(
-              'Ngày đăng ký',
-              style: style,
-            ),
-          ),
-          Expanded(
-            flex: 10,
-            child: Center(
-              child: Text(
-                'Thao tác',
-                style: style,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================
-  // ADMIN ROW
-  // =========================================================
-
-  Widget _buildAdminRow(
-    QueryDocumentSnapshot<Map<String, dynamic>>
-        doc,
-  ) {
-    final data = doc.data();
-
-    final studentCode =
-        data['studentCode']?.toString() ?? '';
-
-    final studentName =
-        data['studentName']?.toString() ?? '';
-
-    final subjectCode =
-        data['subjectCode']?.toString() ?? '';
-
-    final subjectName =
-        data['subjectName']?.toString() ?? '';
-
-    final credits =
-        data['credits']?.toString() ?? '0';
-
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 66,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 8,
-      ),
-      decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: Color(0xffe5e7eb),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 15,
-            child: Text(
-              studentCode,
-              overflow:
-                  TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight:
-                    FontWeight.w600,
-              ),
-            ),
-          ),
-
-          Expanded(
-            flex: 22,
-            child: Text(
-              studentName,
-              overflow:
-                  TextOverflow.ellipsis,
-            ),
-          ),
-
-          Expanded(
-            flex: 14,
-            child: Text(
-              subjectCode,
-              overflow:
-                  TextOverflow.ellipsis,
-            ),
-          ),
-
-          Expanded(
-            flex: 25,
-            child: Text(
-              subjectName,
-              overflow:
-                  TextOverflow.ellipsis,
-            ),
-          ),
-
-          Expanded(
-            flex: 10,
-            child: Text(
-              credits,
-            ),
-          ),
-
-          Expanded(
-            flex: 18,
-            child: Text(
-              _formatDate(
-                data['registeredAt'],
-              ),
-            ),
-          ),
-
-          Expanded(
-            flex: 10,
-            child: Center(
-              child: IconButton(
-                tooltip:
-                    'Hủy đăng ký',
-                onPressed: () {
-                  _adminDeleteRegistration(
-                    registrationId:
-                        doc.id,
-                    studentName:
-                        studentName,
-                    subjectName:
-                        subjectName,
-                  );
-                },
-                icon: const Icon(
-                  Icons
-                      .delete_outline,
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =========================================================
-  // DISPOSE
-  // =========================================================
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchController
+        .dispose();
     super.dispose();
   }
 }

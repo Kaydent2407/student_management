@@ -9,7 +9,7 @@ class RegistrationService {
       FirebaseAuth.instance;
 
   // =========================================================
-  // DANH SÁCH MÔN HỌC
+  // MÔN HỌC
   // =========================================================
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getSubjects() {
@@ -20,12 +20,46 @@ class RegistrationService {
   }
 
   // =========================================================
-  // DANH SÁCH ĐĂNG KÝ CỦA SINH VIÊN HIỆN TẠI
+  // HỌC KỲ HIỆN TẠI
+  // =========================================================
+
+  Future<Map<String, dynamic>>
+      getActiveSemester() async {
+    final snapshot = await _firestore
+        .collection('tuition_rates')
+        .where(
+          'isActive',
+          isEqualTo: true,
+        )
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      throw Exception(
+        'Chưa cấu hình học kỳ hiện tại.',
+      );
+    }
+
+    final doc =
+        snapshot.docs.first;
+
+    return {
+      'semesterCode':
+          doc.id,
+      ...doc.data(),
+    };
+  }
+
+  // =========================================================
+  // ĐĂNG KÝ CỦA SINH VIÊN THEO HỌC KỲ
   // =========================================================
 
   Stream<QuerySnapshot<Map<String, dynamic>>>
-      getMyRegistrations() {
-    final user = _auth.currentUser;
+      getMyRegistrations({
+    required String semesterCode,
+  }) {
+    final user =
+        _auth.currentUser;
 
     if (user == null) {
       throw Exception(
@@ -37,35 +71,35 @@ class RegistrationService {
         .collection('registrations')
         .where(
           'userId',
-          isEqualTo: user.uid,
+          isEqualTo:
+              user.uid,
+        )
+        .where(
+          'semesterCode',
+          isEqualTo:
+              semesterCode,
         )
         .snapshots();
   }
-
-  // =========================================================
-  // ADMIN - XEM TẤT CẢ ĐĂNG KÝ
-  // =========================================================
 
   Stream<QuerySnapshot<Map<String, dynamic>>>
       getAllRegistrations() {
     return _firestore
         .collection('registrations')
-        .orderBy(
-          'registeredAt',
-          descending: true,
-        )
         .snapshots();
   }
 
   // =========================================================
-  // SINH VIÊN ĐĂNG KÝ MÔN HỌC
+  // ĐĂNG KÝ
   // =========================================================
 
   Future<void> registerSubject({
     required String subjectId,
-    required Map<String, dynamic> subjectData,
+    required Map<String, dynamic>
+        subjectData,
   }) async {
-    final user = _auth.currentUser;
+    final user =
+        _auth.currentUser;
 
     if (user == null) {
       throw Exception(
@@ -73,162 +107,138 @@ class RegistrationService {
       );
     }
 
-    // =======================================================
-    // LẤY THÔNG TIN TÀI KHOẢN
-    // =======================================================
-
-    final userDoc = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final userDoc =
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
     if (!userDoc.exists) {
       throw Exception(
-        'Không tìm thấy thông tin tài khoản.',
+        'Không tìm thấy tài khoản.',
       );
     }
 
-    final userData = userDoc.data();
+    final userData =
+        userDoc.data()!;
 
-    if (userData == null) {
+    if (userData['role'] !=
+        'student') {
       throw Exception(
-        'Dữ liệu tài khoản không hợp lệ.',
+        'Chỉ sinh viên mới được đăng ký.',
       );
     }
 
-    // =======================================================
-    // KIỂM TRA ROLE
-    // =======================================================
-
-    final role =
-        userData['role']?.toString() ?? '';
-
-    if (role != 'student') {
+    if ((userData['isActive']
+                as bool? ??
+            false) ==
+        false) {
       throw Exception(
-        'Chỉ sinh viên mới được đăng ký môn học.',
+        'Tài khoản đã bị khóa.',
       );
     }
-
-    // =======================================================
-    // KIỂM TRA TRẠNG THÁI
-    // =======================================================
-
-    final isActive =
-        userData['isActive'] as bool? ?? false;
-
-    if (!isActive) {
-      throw Exception(
-        'Tài khoản của bạn đã bị khóa.',
-      );
-    }
-
-    // =======================================================
-    // THÔNG TIN SINH VIÊN
-    // =======================================================
 
     final studentId =
         userData['studentId']
-                ?.toString()
-                .trim() ??
+                ?.toString() ??
             '';
 
     final studentCode =
         userData['studentCode']
-                ?.toString()
-                .trim() ??
+                ?.toString() ??
             '';
 
     final studentName =
         userData['fullName']
-                ?.toString()
-                .trim() ??
+                ?.toString() ??
             '';
 
     if (studentId.isEmpty) {
       throw Exception(
-        'Tài khoản chưa được liên kết với hồ sơ sinh viên.',
+        'Tài khoản chưa liên kết sinh viên.',
       );
     }
 
-    if (studentCode.isEmpty) {
-      throw Exception(
-        'Tài khoản chưa có mã sinh viên.',
-      );
-    }
+    final semester =
+        await getActiveSemester();
 
-    // =======================================================
-    // THÔNG TIN MÔN HỌC
-    // =======================================================
+    final semesterCode =
+        semester[
+                'semesterCode']
+            .toString();
+
+    final semesterName =
+        semester[
+                    'semesterName']
+                ?.toString() ??
+            semesterCode;
 
     final subjectCode =
-        subjectData['subjectCode']
-                ?.toString()
-                .trim() ??
+        subjectData[
+                    'subjectCode']
+                ?.toString() ??
             '';
 
     final subjectName =
-        subjectData['subjectName']
-                ?.toString()
-                .trim() ??
+        subjectData[
+                    'subjectName']
+                ?.toString() ??
             '';
 
     final credits =
-        subjectData['credits'] ?? 0;
-
-    if (subjectCode.isEmpty ||
-        subjectName.isEmpty) {
-      throw Exception(
-        'Thông tin môn học không hợp lệ.',
-      );
-    }
-
-    // =======================================================
-    // ID ĐĂNG KÝ
-    //
-    // Mỗi sinh viên + mỗi môn chỉ có duy nhất 1 document.
-    //
-    // Ví dụ:
-    // UIDabc_subject123
-    // =======================================================
+        subjectData['credits'] ??
+            0;
 
     final registrationId =
-        '${user.uid}_$subjectId';
+        '${user.uid}_${semesterCode}_$subjectId';
 
-    final registrationRef =
+    final ref =
         _firestore
-            .collection('registrations')
-            .doc(registrationId);
-
-    // =======================================================
-    // TẠO ĐĂNG KÝ
-    //
-    // KHÔNG dùng transaction.get()
-    // vì document chưa tồn tại sẽ bị Firestore Rules chặn read.
-    // =======================================================
+            .collection(
+              'registrations',
+            )
+            .doc(
+              registrationId,
+            );
 
     try {
-      await registrationRef.set({
-        'userId': user.uid,
+      await ref.set({
+        'userId':
+            user.uid,
 
-        'studentId': studentId,
-        'studentCode': studentCode,
-        'studentName': studentName,
+        'studentId':
+            studentId,
+        'studentCode':
+            studentCode,
+        'studentName':
+            studentName,
 
-        'subjectId': subjectId,
-        'subjectCode': subjectCode,
-        'subjectName': subjectName,
+        'subjectId':
+            subjectId,
+        'subjectCode':
+            subjectCode,
+        'subjectName':
+            subjectName,
+        'credits':
+            credits,
 
-        'credits': credits,
+        'semesterCode':
+            semesterCode,
+        'semesterName':
+            semesterName,
 
-        'status': 'registered',
+        'status':
+            'registered',
 
         'registeredAt':
-            FieldValue.serverTimestamp(),
+            FieldValue
+                .serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
+      if (e.code ==
+          'permission-denied') {
         throw Exception(
-          'Không có quyền đăng ký môn học hoặc môn này đã được đăng ký.',
+          'Môn này đã được đăng ký hoặc bạn không có quyền đăng ký.',
         );
       }
 
@@ -237,13 +247,14 @@ class RegistrationService {
   }
 
   // =========================================================
-  // SINH VIÊN HỦY ĐĂNG KÝ
+  // HỦY ĐĂNG KÝ
   // =========================================================
 
   Future<void> cancelMyRegistration({
     required String subjectId,
   }) async {
-    final user = _auth.currentUser;
+    final user =
+        _auth.currentUser;
 
     if (user == null) {
       throw Exception(
@@ -251,53 +262,33 @@ class RegistrationService {
       );
     }
 
+    final semester =
+        await getActiveSemester();
+
+    final semesterCode =
+        semester[
+                'semesterCode']
+            .toString();
+
     final registrationId =
-        '${user.uid}_$subjectId';
+        '${user.uid}_${semesterCode}_$subjectId';
 
-    final registrationRef =
-        _firestore
-            .collection('registrations')
-            .doc(registrationId);
-
-    try {
-      await registrationRef.delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw Exception(
-          'Bạn không có quyền hủy đăng ký này.',
-        );
-      }
-
-      rethrow;
-    }
+    await _firestore
+        .collection(
+          'registrations',
+        )
+        .doc(
+          registrationId,
+        )
+        .delete();
   }
-
-  // =========================================================
-  // ADMIN HỦY ĐĂNG KÝ
-  // =========================================================
 
   Future<void> deleteRegistration(
     String registrationId,
   ) async {
-    if (registrationId.trim().isEmpty) {
-      throw Exception(
-        'Mã đăng ký không hợp lệ.',
-      );
-    }
-
-    try {
-      await _firestore
-          .collection('registrations')
-          .doc(registrationId)
-          .delete();
-    } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        throw Exception(
-          'Bạn không có quyền xóa đăng ký này.',
-        );
-      }
-
-      rethrow;
-    }
+    await _firestore
+        .collection('registrations')
+        .doc(registrationId)
+        .delete();
   }
 }

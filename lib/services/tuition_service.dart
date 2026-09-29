@@ -5,7 +5,145 @@ class TuitionService {
       FirebaseFirestore.instance;
 
   // =========================================================
-  // ADMIN - TẤT CẢ HỌC PHÍ
+  // CẤU HÌNH HỌC KỲ
+  // =========================================================
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getTuitionRates() {
+    return _firestore
+        .collection('tuition_rates')
+        .orderBy(
+          'semesterName',
+          descending: true,
+        )
+        .snapshots();
+  }
+
+  Future<Map<String, dynamic>?> getActiveRate() async {
+    final snapshot = await _firestore
+        .collection('tuition_rates')
+        .where(
+          'isActive',
+          isEqualTo: true,
+        )
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      return null;
+    }
+
+    final doc = snapshot.docs.first;
+
+    return {
+      'id': doc.id,
+      ...doc.data(),
+    };
+  }
+
+  // =========================================================
+  // LƯU CẤU HÌNH HỌC KỲ
+  // =========================================================
+
+  Future<void> saveTuitionRate({
+    required String semesterCode,
+    required String semesterName,
+    required double pricePerCredit,
+    required DateTime dueDate,
+    required bool isActive,
+  }) async {
+    final code = semesterCode
+        .trim()
+        .toUpperCase()
+        .replaceAll(' ', '_');
+
+    if (code.isEmpty) {
+      throw Exception(
+        'Mã học kỳ không được để trống.',
+      );
+    }
+
+    if (code.contains('/')) {
+      throw Exception(
+        'Mã học kỳ không được chứa dấu "/".',
+      );
+    }
+
+    if (semesterName.trim().isEmpty) {
+      throw Exception(
+        'Tên học kỳ không được để trống.',
+      );
+    }
+
+    if (pricePerCredit <= 0) {
+      throw Exception(
+        'Đơn giá tín chỉ phải lớn hơn 0.',
+      );
+    }
+
+    final rateRef = _firestore
+        .collection('tuition_rates')
+        .doc(code);
+
+    final oldRate = await rateRef.get();
+
+    final batch = _firestore.batch();
+
+    // Nếu học kỳ mới được đặt active
+    // thì tắt active các học kỳ khác
+    if (isActive) {
+      final activeRates = await _firestore
+          .collection('tuition_rates')
+          .where(
+            'isActive',
+            isEqualTo: true,
+          )
+          .get();
+
+      for (final doc in activeRates.docs) {
+        if (doc.id != code) {
+          batch.update(
+            doc.reference,
+            {
+              'isActive': false,
+              'updatedAt':
+                  FieldValue.serverTimestamp(),
+            },
+          );
+        }
+      }
+    }
+
+    batch.set(
+      rateRef,
+      {
+        'semesterCode': code,
+        'semesterName':
+            semesterName.trim(),
+        'pricePerCredit':
+            pricePerCredit,
+        'dueDate':
+            Timestamp.fromDate(
+          dueDate,
+        ),
+        'isActive':
+            isActive,
+        'updatedAt':
+            FieldValue.serverTimestamp(),
+
+        if (!oldRate.exists)
+          'createdAt':
+              FieldValue.serverTimestamp(),
+      },
+      SetOptions(
+        merge: true,
+      ),
+    );
+
+    await batch.commit();
+  }
+
+  // =========================================================
+  // DANH SÁCH HỌC PHÍ
   // =========================================================
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllTuition() {
@@ -13,10 +151,6 @@ class TuitionService {
         .collection('tuition')
         .snapshots();
   }
-
-  // =========================================================
-  // SINH VIÊN - HỌC PHÍ CỦA MÌNH
-  // =========================================================
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getStudentTuition(
     String studentId,
@@ -31,102 +165,292 @@ class TuitionService {
   }
 
   // =========================================================
-  // TÍNH TRẠNG THÁI
+  // TÍNH HỌC PHÍ THEO TÍN CHỈ
   // =========================================================
 
-  String calculateStatus({
-    required double totalAmount,
-    required double paidAmount,
-  }) {
-    if (paidAmount <= 0) {
-      return 'unpaid';
+  Future<Map<String, dynamic>> calculateTuition({
+    required String studentId,
+    required String semesterCode,
+  }) async {
+    // Lấy cấu hình học kỳ
+    final rateDoc = await _firestore
+        .collection('tuition_rates')
+        .doc(semesterCode)
+        .get();
+
+    if (!rateDoc.exists) {
+      throw Exception(
+        'Không tìm thấy cấu hình học phí của học kỳ.',
+      );
     }
+
+    final rateData =
+        rateDoc.data()!;
+
+    final pricePerCredit =
+        (rateData['pricePerCredit'] as num? ?? 0)
+            .toDouble();
+
+    if (pricePerCredit <= 0) {
+      throw Exception(
+        'Đơn giá tín chỉ không hợp lệ.',
+      );
+    }
+
+    // Lấy toàn bộ môn sinh viên đã đăng ký
+    final registrations = await _firestore
+        .collection('registrations')
+        .where(
+          'studentId',
+          isEqualTo: studentId,
+        )
+        .get();
+
+    // Lọc đúng học kỳ
+    final semesterRegistrations =
+        registrations.docs.where(
+      (doc) {
+        final data = doc.data();
+
+        return data['semesterCode']
+                ?.toString() ==
+            semesterCode;
+      },
+    ).toList();
+
+    int totalCredits = 0;
+
+    for (final doc in semesterRegistrations) {
+      final credits =
+          doc.data()['credits']
+                  as num? ??
+              0;
+
+      totalCredits +=
+          credits.toInt();
+    }
+
+    final totalAmount =
+        totalCredits *
+            pricePerCredit;
+
+    return {
+      'semesterCode':
+          semesterCode,
+
+      'semesterName':
+          rateData['semesterName'] ??
+              semesterCode,
+
+      'pricePerCredit':
+          pricePerCredit,
+
+      'totalCredits':
+          totalCredits,
+
+      'subjectCount':
+          semesterRegistrations.length,
+
+      'totalAmount':
+          totalAmount,
+
+      'dueDate':
+          rateData['dueDate'],
+    };
+  }
+
+  // =========================================================
+  // ADMIN - TẠO / CẬP NHẬT HỌC PHÍ
+  // =========================================================
+
+  Future<void> saveStudentTuition({
+    required String studentId,
+    required String studentCode,
+    required String studentName,
+    required String semesterCode,
+    required double paidAmount,
+  }) async {
+    final calculated =
+        await calculateTuition(
+      studentId:
+          studentId,
+      semesterCode:
+          semesterCode,
+    );
+
+    final totalCredits =
+        calculated['totalCredits']
+            as int;
+
+    final subjectCount =
+        calculated['subjectCount']
+            as int;
+
+    final totalAmount =
+        (calculated['totalAmount']
+                as num)
+            .toDouble();
+
+    final pricePerCredit =
+        (calculated['pricePerCredit']
+                as num)
+            .toDouble();
+
+    if (totalCredits <= 0) {
+      throw Exception(
+        'Sinh viên chưa đăng ký môn nào trong học kỳ này.',
+      );
+    }
+
+    if (paidAmount < 0) {
+      throw Exception(
+        'Số tiền đã đóng không được âm.',
+      );
+    }
+
+    if (paidAmount > totalAmount) {
+      throw Exception(
+        'Số tiền đã đóng không được lớn hơn tổng học phí.',
+      );
+    }
+
+    final remainingAmount =
+        totalAmount -
+            paidAmount;
+
+    String status = 'unpaid';
 
     if (paidAmount >= totalAmount) {
-      return 'paid';
+      status = 'paid';
+    } else if (paidAmount > 0) {
+      status = 'partial';
     }
 
-    return 'partial';
+    final tuitionId =
+        '${studentId}_$semesterCode';
+
+    final ref = _firestore
+        .collection('tuition')
+        .doc(tuitionId);
+
+    final old =
+        await ref.get();
+
+    await ref.set(
+      {
+        'studentId':
+            studentId,
+
+        'studentCode':
+            studentCode,
+
+        'studentName':
+            studentName,
+
+        'semesterCode':
+            semesterCode,
+
+        'semesterName':
+            calculated['semesterName'],
+
+        'subjectCount':
+            subjectCount,
+
+        'totalCredits':
+            totalCredits,
+
+        'pricePerCredit':
+            pricePerCredit,
+
+        'totalAmount':
+            totalAmount,
+
+        'paidAmount':
+            paidAmount,
+
+        'remainingAmount':
+            remainingAmount,
+
+        'status':
+            status,
+
+        'dueDate':
+            calculated['dueDate'],
+
+        'updatedAt':
+            FieldValue.serverTimestamp(),
+
+        if (!old.exists)
+          'createdAt':
+              FieldValue.serverTimestamp(),
+      },
+      SetOptions(
+        merge: true,
+      ),
+    );
   }
 
   // =========================================================
-  // THÊM HỌC PHÍ
+  // SINH VIÊN - THANH TOÁN GIẢ LẬP
   // =========================================================
 
-  Future<void> addTuition({
-    required String studentId,
-    required String studentCode,
-    required String studentName,
-    required String semester,
-    required double totalAmount,
-    required double paidAmount,
-    required DateTime dueDate,
+  Future<void> mockPayTuition({
+    required String tuitionId,
   }) async {
+    final ref = _firestore
+        .collection('tuition')
+        .doc(tuitionId);
+
+    final snapshot =
+        await ref.get();
+
+    if (!snapshot.exists) {
+      throw Exception(
+        'Không tìm thấy thông tin học phí.',
+      );
+    }
+
+    final data =
+        snapshot.data()!;
+
+    final totalAmount =
+        (data['totalAmount']
+                    as num? ??
+                0)
+            .toDouble();
+
+    final status =
+        data['status']
+                ?.toString() ??
+            'unpaid';
+
     if (totalAmount <= 0) {
       throw Exception(
-        'Tổng học phí phải lớn hơn 0.',
+        'Tổng học phí không hợp lệ.',
       );
     }
 
-    if (paidAmount < 0) {
+    if (status == 'paid') {
       throw Exception(
-        'Số tiền đã đóng không được âm.',
+        'Học phí này đã được thanh toán.',
       );
     }
 
-    if (paidAmount > totalAmount) {
-      throw Exception(
-        'Số tiền đã đóng không được lớn hơn tổng học phí.',
-      );
-    }
+    await ref.update({
+      'paidAmount':
+          totalAmount,
 
-    // Kiểm tra trùng học kỳ của sinh viên
-    final existing = await _firestore
-        .collection('tuition')
-        .where(
-          'studentId',
-          isEqualTo: studentId,
-        )
-        .get();
-
-    final duplicate = existing.docs.any(
-      (doc) =>
-          doc.data()['semester']
-              ?.toString()
-              .toLowerCase() ==
-          semester.trim().toLowerCase(),
-    );
-
-    if (duplicate) {
-      throw Exception(
-        'Sinh viên đã có học phí cho học kỳ này.',
-      );
-    }
-
-    final status = calculateStatus(
-      totalAmount: totalAmount,
-      paidAmount: paidAmount,
-    );
-
-    await _firestore.collection('tuition').add({
-      'studentId': studentId,
-      'studentCode': studentCode,
-      'studentName': studentName,
-
-      'semester': semester.trim(),
-
-      'totalAmount': totalAmount,
-      'paidAmount': paidAmount,
       'remainingAmount':
-          totalAmount - paidAmount,
+          0,
 
-      'status': status,
+      'status':
+          'paid',
 
-      'dueDate': Timestamp.fromDate(
-        dueDate,
-      ),
+      // Thanh toán giả lập để demo
+      'paymentMethod':
+          'mock',
 
-      'createdAt':
+      'paidAt':
           FieldValue.serverTimestamp(),
 
       'updatedAt':
@@ -135,95 +459,7 @@ class TuitionService {
   }
 
   // =========================================================
-  // CẬP NHẬT HỌC PHÍ
-  // =========================================================
-
-  Future<void> updateTuition({
-    required String id,
-    required String studentId,
-    required String studentCode,
-    required String studentName,
-    required String semester,
-    required double totalAmount,
-    required double paidAmount,
-    required DateTime dueDate,
-  }) async {
-    if (totalAmount <= 0) {
-      throw Exception(
-        'Tổng học phí phải lớn hơn 0.',
-      );
-    }
-
-    if (paidAmount < 0) {
-      throw Exception(
-        'Số tiền đã đóng không được âm.',
-      );
-    }
-
-    if (paidAmount > totalAmount) {
-      throw Exception(
-        'Số tiền đã đóng không được lớn hơn tổng học phí.',
-      );
-    }
-
-    final existing = await _firestore
-        .collection('tuition')
-        .where(
-          'studentId',
-          isEqualTo: studentId,
-        )
-        .get();
-
-    final duplicate = existing.docs.any(
-      (doc) =>
-          doc.id != id &&
-          doc.data()['semester']
-                  ?.toString()
-                  .toLowerCase() ==
-              semester
-                  .trim()
-                  .toLowerCase(),
-    );
-
-    if (duplicate) {
-      throw Exception(
-        'Sinh viên đã có học phí cho học kỳ này.',
-      );
-    }
-
-    final status = calculateStatus(
-      totalAmount: totalAmount,
-      paidAmount: paidAmount,
-    );
-
-    await _firestore
-        .collection('tuition')
-        .doc(id)
-        .update({
-      'studentId': studentId,
-      'studentCode': studentCode,
-      'studentName': studentName,
-
-      'semester': semester.trim(),
-
-      'totalAmount': totalAmount,
-      'paidAmount': paidAmount,
-      'remainingAmount':
-          totalAmount - paidAmount,
-
-      'status': status,
-
-      'dueDate': Timestamp.fromDate(
-        dueDate,
-      ),
-
-      'updatedAt':
-          FieldValue.serverTimestamp(),
-    });
-  }
-
-  // =========================================================
-  // XÓA
+  // ADMIN - XÓA
   // =========================================================
 
   Future<void> deleteTuition(
