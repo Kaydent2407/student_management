@@ -14,6 +14,7 @@ import 'grades/grades_page.dart';
 import 'admin/account_management_page.dart';
 import 'departments/department_major_page.dart';
 import 'registrations/course_registration_page.dart';
+import 'schedules/schedules_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,6 +29,10 @@ class _HomePageState extends State<HomePage> {
 
   final UserService userService =
       UserService();
+
+  // =========================================================
+  // ADMIN PAGE
+  // =========================================================
 
   Widget adminPage(int index) {
     switch (index) {
@@ -53,32 +58,39 @@ class _HomePageState extends State<HomePage> {
         return const DepartmentMajorPage();
 
       case 7:
+        return const SchedulesPage();
+
+      case 8:
         return const PlaceholderPage(
           title: 'Điểm danh',
         );
 
-      case 8:
+      case 9:
         return const PlaceholderPage(
           title: 'Báo cáo thống kê',
         );
 
-      case 9:
+      case 10:
         return const PlaceholderPage(
           title: 'Thông báo',
         );
 
-      case 10:
+      case 11:
         return const PlaceholderPage(
           title: 'Trang cá nhân',
         );
 
-      case 11:
+      case 12:
         return const AccountManagementPage();
 
       default:
         return const DashboardPage();
     }
   }
+
+  // =========================================================
+  // STUDENT PAGE
+  // =========================================================
 
   Widget studentPage(int index) {
     switch (index) {
@@ -92,9 +104,7 @@ class _HomePageState extends State<HomePage> {
         return const GradesPage();
 
       case 3:
-        return const PlaceholderPage(
-          title: 'Lịch học',
-        );
+        return const SchedulesPage();
 
       case 4:
         return const PlaceholderPage(
@@ -111,6 +121,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // =========================================================
+  // BUILD
+  // =========================================================
+
   @override
   Widget build(BuildContext context) {
     final currentUser =
@@ -125,44 +139,84 @@ class _HomePageState extends State<HomePage> {
     }
 
     return StreamBuilder<
-        DocumentSnapshot<Map<String, dynamic>>>(
-      stream: userService.currentUserStream(),
+        DocumentSnapshot<
+            Map<String, dynamic>>>(
+      stream:
+          userService.currentUserStream(),
+
       builder: (context, snapshot) {
+        // ===================================================
+        // LOADING USER
+        // ===================================================
+
         if (snapshot.connectionState ==
             ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(),
+              child:
+                  CircularProgressIndicator(),
             ),
           );
         }
+
+        // ===================================================
+        // ERROR
+        // ===================================================
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Text(
+                'Có lỗi xảy ra: ${snapshot.error}',
+              ),
+            ),
+          );
+        }
+
+        // ===================================================
+        // USER DOCUMENT KHÔNG TỒN TẠI
+        // ===================================================
 
         if (!snapshot.hasData ||
             !snapshot.data!.exists) {
           return Scaffold(
             body: Center(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize:
+                    MainAxisSize.min,
                 children: [
                   const Icon(
                     Icons.warning_amber,
-                    size: 50,
+                    size: 55,
                     color: Colors.orange,
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(
+                    height: 15,
+                  ),
 
                   const Text(
                     'Không tìm thấy thông tin người dùng.',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.w600,
+                    ),
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(
+                    height: 20,
+                  ),
 
-                  FilledButton(
+                  FilledButton.icon(
                     onPressed: () async {
-                      await AuthService().logout();
+                      await AuthService()
+                          .logout();
                     },
-                    child: const Text(
+                    icon: const Icon(
+                      Icons.logout,
+                    ),
+                    label: const Text(
                       'Đăng xuất',
                     ),
                   ),
@@ -172,117 +226,199 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-        final data = snapshot.data!.data()!;
+        final data =
+            snapshot.data!.data()!;
 
-        final isActive = data['isActive'] ?? true;
-
-if (!isActive) {
-  return Scaffold(
-    body: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.lock_outline,
-            size: 70,
-            color: Colors.red,
-          ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            'Tài khoản đã bị khóa',
-            style: TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            'Vui lòng liên hệ quản trị viên.',
-            style: TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-
-          const SizedBox(height: 25),
-
-          FilledButton.icon(
-            onPressed: () async {
-              await AuthService().logout();
-            },
-            icon: const Icon(Icons.logout),
-            label: const Text('Đăng xuất'),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+        // ===================================================
+        // USER INFO
+        // ===================================================
 
         final role =
-            data['role'] ?? 'student';
+            data['role']?.toString() ??
+                'student';
 
         final fullName =
-            data['fullName'] ?? '';
+            data['fullName']?.toString() ??
+                '';
 
         final email =
-            data['email'] ??
+            data['email']?.toString() ??
                 currentUser.email ??
                 '';
+
+        final isActive =
+            data['isActive'] as bool? ??
+                true;
+
+        // ===================================================
+        // ACCOUNT BỊ KHÓA
+        // ===================================================
+
+        if (!isActive) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize:
+                    MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lock_outline,
+                    size: 70,
+                    color: Colors.red,
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+
+                  const Text(
+                    'Tài khoản đã bị khóa',
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 10,
+                  ),
+
+                  const Text(
+                    'Vui lòng liên hệ quản trị viên.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 25,
+                  ),
+
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await AuthService()
+                          .logout();
+                    },
+                    icon: const Icon(
+                      Icons.logout,
+                    ),
+                    label: const Text(
+                      'Đăng xuất',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ===================================================
+        // MAIN UI
+        // ===================================================
 
         return Scaffold(
           body: Row(
             children: [
+              // =================================================
+              // SIDEBAR
+              // =================================================
+
               Sidebar(
-                selectedIndex: selectedIndex,
+                selectedIndex:
+                    selectedIndex,
                 role: role,
                 onSelect: (index) {
                   setState(() {
-                    selectedIndex = index;
+                    selectedIndex =
+                        index;
                   });
                 },
               ),
 
+              // =================================================
+              // CONTENT
+              // =================================================
+
               Expanded(
                 child: Column(
                   children: [
+                    // ===========================================
+                    // TOP BAR
+                    // ===========================================
+
                     Container(
                       height: 70,
                       padding:
-                          const EdgeInsets.symmetric(
+                          const EdgeInsets
+                              .symmetric(
                         horizontal: 30,
                       ),
                       decoration:
                           const BoxDecoration(
                         color: Colors.white,
                         border: Border(
-                          bottom: BorderSide(
+                          bottom:
+                              BorderSide(
                             color:
-                                Color(0xffe5e7eb),
+                                Color(
+                              0xffe5e7eb,
+                            ),
                           ),
                         ),
                       ),
                       child: Row(
                         mainAxisAlignment:
-                            MainAxisAlignment.end,
+                            MainAxisAlignment
+                                .end,
                         children: [
-                          const Icon(
-                            Icons
-                                .notifications_none,
+                          // Notification
+                          IconButton(
+                            tooltip:
+                                'Thông báo',
+                            onPressed: () {
+                              if (role ==
+                                  'admin') {
+                                setState(() {
+                                  selectedIndex =
+                                      10;
+                                });
+                              } else {
+                                setState(() {
+                                  selectedIndex =
+                                      4;
+                                });
+                              }
+                            },
+                            icon: const Icon(
+                              Icons
+                                  .notifications_none,
+                            ),
                           ),
 
-                          const SizedBox(width: 20),
+                          const SizedBox(
+                            width: 15,
+                          ),
 
+                          // Avatar
                           const CircleAvatar(
-                            child:
-                                Icon(Icons.person),
+                            backgroundColor:
+                                Color(
+                              0xffe0e7ff,
+                            ),
+                            child: Icon(
+                              Icons.person,
+                              color: Color(
+                                0xff4f46e5,
+                              ),
+                            ),
                           ),
 
-                          const SizedBox(width: 10),
+                          const SizedBox(
+                            width: 10,
+                          ),
 
+                          // User info
                           Column(
                             mainAxisAlignment:
                                 MainAxisAlignment
@@ -292,7 +428,10 @@ if (!isActive) {
                                     .start,
                             children: [
                               Text(
-                                fullName,
+                                fullName
+                                        .isEmpty
+                                    ? email
+                                    : fullName,
                                 style:
                                     const TextStyle(
                                   fontWeight:
@@ -300,24 +439,51 @@ if (!isActive) {
                                           .bold,
                                 ),
                               ),
+
+                              const SizedBox(
+                                height: 2,
+                              ),
+
                               Text(
-                                role == 'admin'
+                                role ==
+                                        'admin'
                                     ? 'Quản trị viên'
                                     : 'Sinh viên',
                                 style:
                                     const TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey,
+                                  color:
+                                      Colors.grey,
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(width: 10),
+                          const SizedBox(
+                            width: 5,
+                          ),
 
-                          PopupMenuButton<String>(
+                          // Menu
+                          PopupMenuButton<
+                              String>(
+                            tooltip:
+                                'Tài khoản',
                             onSelected:
                                 (value) async {
+                              if (value ==
+                                  'profile') {
+                                setState(() {
+                                  if (role ==
+                                      'admin') {
+                                    selectedIndex =
+                                        11;
+                                  } else {
+                                    selectedIndex =
+                                        5;
+                                  }
+                                });
+                              }
+
                               if (value ==
                                   'logout') {
                                 await AuthService()
@@ -326,22 +492,74 @@ if (!isActive) {
                             },
                             itemBuilder:
                                 (context) => [
-                              PopupMenuItem(
+                              PopupMenuItem<
+                                  String>(
                                 enabled: false,
-                                child: Text(
-                                  email,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment
+                                          .start,
+                                  children: [
+                                    Text(
+                                      fullName,
+                                      style:
+                                          const TextStyle(
+                                        fontWeight:
+                                            FontWeight
+                                                .bold,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      height: 3,
+                                    ),
+                                    Text(
+                                      email,
+                                      style:
+                                          const TextStyle(
+                                        fontSize:
+                                            12,
+                                        color:
+                                            Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+
                               const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: 'logout',
+
+                              const PopupMenuItem<
+                                  String>(
+                                value:
+                                    'profile',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons
+                                          .person_outline,
+                                    ),
+                                    SizedBox(
+                                      width: 10,
+                                    ),
+                                    Text(
+                                      'Trang cá nhân',
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const PopupMenuItem<
+                                  String>(
+                                value:
+                                    'logout',
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.logout,
                                     ),
                                     SizedBox(
-                                        width: 10),
+                                      width: 10,
+                                    ),
                                     Text(
                                       'Đăng xuất',
                                     ),
@@ -354,14 +572,19 @@ if (!isActive) {
                       ),
                     ),
 
+                    // ===========================================
+                    // PAGE CONTENT
+                    // ===========================================
+
                     Expanded(
-                      child: role == 'admin'
-                          ? adminPage(
-                              selectedIndex,
-                            )
-                          : studentPage(
-                              selectedIndex,
-                            ),
+                      child:
+                          role == 'admin'
+                              ? adminPage(
+                                  selectedIndex,
+                                )
+                              : studentPage(
+                                  selectedIndex,
+                                ),
                     ),
                   ],
                 ),
@@ -374,6 +597,10 @@ if (!isActive) {
   }
 }
 
+// =============================================================
+// PLACEHOLDER PAGE
+// =============================================================
+
 class PlaceholderPage extends StatelessWidget {
   final String title;
 
@@ -383,16 +610,47 @@ class PlaceholderPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Center(
-      child: Text(
-        '$title\nĐang phát triển',
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
+      child: Column(
+        mainAxisSize:
+            MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons
+                .construction_outlined,
+            size: 65,
+            color: Colors.grey,
+          ),
+
+          const SizedBox(
+            height: 15,
+          ),
+
+          Text(
+            title,
+            style:
+                const TextStyle(
+              fontSize: 28,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(
+            height: 7,
+          ),
+
+          const Text(
+            'Chức năng đang phát triển',
+            style:
+                TextStyle(
+              color: Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }

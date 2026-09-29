@@ -12,7 +12,12 @@ class Sidebar extends StatelessWidget {
     required this.onSelect,
   });
 
+  // =========================================================
+  // MENU THEO ROLE
+  // =========================================================
+
   List<Map<String, dynamic>> getMenus() {
+    // ================= ADMIN =================
     if (role == 'admin') {
       return [
         {
@@ -44,6 +49,10 @@ class Sidebar extends StatelessWidget {
           'icon': Icons.account_tree_outlined,
         },
         {
+          'title': 'Lịch học',
+          'icon': Icons.calendar_month_outlined,
+        },
+        {
           'title': 'Điểm danh',
           'icon': Icons.fact_check_outlined,
         },
@@ -66,6 +75,7 @@ class Sidebar extends StatelessWidget {
       ];
     }
 
+    // ================= STUDENT =================
     return [
       {
         'title': 'Dashboard',
@@ -94,6 +104,10 @@ class Sidebar extends StatelessWidget {
     ];
   }
 
+  // =========================================================
+  // BUILD
+  // =========================================================
+
   @override
   Widget build(BuildContext context) {
     final menus = getMenus();
@@ -103,6 +117,10 @@ class Sidebar extends StatelessWidget {
       color: const Color(0xff111827),
       child: Column(
         children: [
+          // =================================================
+          // LOGO
+          // =================================================
+
           Container(
             height: 90,
             padding: const EdgeInsets.symmetric(
@@ -115,12 +133,15 @@ class Sidebar extends StatelessWidget {
                   color: Colors.white,
                   size: 35,
                 ),
+
                 SizedBox(width: 12),
+
                 Text(
                   'STUDENT\nMANAGER',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    height: 1.15,
                   ),
                 ),
               ],
@@ -132,17 +153,25 @@ class Sidebar extends StatelessWidget {
             height: 1,
           ),
 
+          // =================================================
+          // MENU
+          // =================================================
+
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 12,
+              ),
               itemCount: menus.length,
               itemBuilder: (context, index) {
                 final selected =
-                    index == selectedIndex;
+                    selectedIndex == index;
 
                 return Container(
-                  margin:
-                      const EdgeInsets.only(bottom: 5),
+                  margin: const EdgeInsets.only(
+                    bottom: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: selected
                         ? const Color(0xff2563EB)
@@ -151,21 +180,37 @@ class Sidebar extends StatelessWidget {
                         BorderRadius.circular(8),
                   ),
                   child: ListTile(
+                    dense: true,
+
+                    contentPadding:
+                        const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
+                    ),
+
                     onTap: () {
                       onSelect(index);
                     },
+
                     leading: Icon(
-                      menus[index]['icon'],
+                      menus[index]['icon']
+                          as IconData,
+                      size: 22,
                       color: selected
                           ? Colors.white
                           : Colors.white70,
                     ),
+
                     title: Text(
-                      menus[index]['title'],
+                      menus[index]['title']
+                          as String,
                       style: TextStyle(
                         color: selected
                             ? Colors.white
                             : Colors.white70,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
