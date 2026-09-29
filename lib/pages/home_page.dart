@@ -15,6 +15,7 @@ import 'admin/account_management_page.dart';
 import 'departments/department_major_page.dart';
 import 'registrations/course_registration_page.dart';
 import 'schedules/schedules_page.dart';
+import 'tuition/tuition_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -61,26 +62,29 @@ class _HomePageState extends State<HomePage> {
         return const SchedulesPage();
 
       case 8:
+        return const TuitionPage();
+
+      case 9:
         return const PlaceholderPage(
           title: 'Điểm danh',
         );
 
-      case 9:
+      case 10:
         return const PlaceholderPage(
           title: 'Báo cáo thống kê',
         );
 
-      case 10:
+      case 11:
         return const PlaceholderPage(
           title: 'Thông báo',
         );
 
-      case 11:
+      case 12:
         return const PlaceholderPage(
           title: 'Trang cá nhân',
         );
 
-      case 12:
+      case 13:
         return const AccountManagementPage();
 
       default:
@@ -107,11 +111,14 @@ class _HomePageState extends State<HomePage> {
         return const SchedulesPage();
 
       case 4:
+        return const TuitionPage();
+
+      case 5:
         return const PlaceholderPage(
           title: 'Thông báo',
         );
 
-      case 5:
+      case 6:
         return const PlaceholderPage(
           title: 'Trang cá nhân',
         );
@@ -381,12 +388,12 @@ class _HomePageState extends State<HomePage> {
                                   'admin') {
                                 setState(() {
                                   selectedIndex =
-                                      10;
+                                      11;
                                 });
                               } else {
                                 setState(() {
                                   selectedIndex =
-                                      4;
+                                      5;
                                 });
                               }
                             },
@@ -476,10 +483,10 @@ class _HomePageState extends State<HomePage> {
                                   if (role ==
                                       'admin') {
                                     selectedIndex =
-                                        11;
+                                        12;
                                   } else {
                                     selectedIndex =
-                                        5;
+                                        6;
                                   }
                                 });
                               }

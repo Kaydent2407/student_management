@@ -53,6 +53,10 @@ class Sidebar extends StatelessWidget {
           'icon': Icons.calendar_month_outlined,
         },
         {
+          'title': 'Học phí',
+          'icon': Icons.payments_outlined,
+        },
+        {
           'title': 'Điểm danh',
           'icon': Icons.fact_check_outlined,
         },
@@ -92,6 +96,10 @@ class Sidebar extends StatelessWidget {
       {
         'title': 'Lịch học',
         'icon': Icons.calendar_month_outlined,
+      },
+      {
+        'title': 'Học phí',
+        'icon': Icons.payments_outlined,
       },
       {
         'title': 'Thông báo',
