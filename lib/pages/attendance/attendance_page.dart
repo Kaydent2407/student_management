@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/audit_log_service.dart';
+
 class AttendancePage extends StatefulWidget {
   final bool isAdmin;
 
@@ -38,6 +40,13 @@ class _AttendancePageState extends State<AttendancePage> {
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    await AuditLogService.log(
+      action: 'update',
+      module: 'attendance',
+      targetId: id,
+      description: 'Điểm danh ${reg['studentCode'] ?? ''} - ${reg['subjectCode'] ?? ''}: $status',
+      details: {'status': status, 'date': _dateKey(_date)},
+    );
   }
 
   @override

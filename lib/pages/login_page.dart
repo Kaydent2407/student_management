@@ -65,6 +65,109 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+
+  Future<void> _showForgotPasswordDialog() async {
+    final controller = TextEditingController(text: emailController.text.trim());
+    bool loading = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> send() async {
+              final email = controller.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                showMessage('Vui lòng nhập email hợp lệ');
+                return;
+              }
+              try {
+                setDialogState(() => loading = true);
+                await authService.sendPasswordResetEmail(email);
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+                showMessage('Đã gửi liên kết đặt lại mật khẩu đến $email');
+              } on FirebaseAuthException catch (e) {
+                if (dialogContext.mounted) {
+                  setDialogState(() => loading = false);
+                }
+                String message = 'Không thể gửi email đặt lại mật khẩu';
+                if (e.code == 'user-not-found') {
+                  message = 'Email chưa được đăng ký trong hệ thống';
+                } else if (e.code == 'invalid-email') {
+                  message = 'Email không hợp lệ';
+                }
+                showMessage(message);
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  setDialogState(() => loading = false);
+                }
+                showMessage(e.toString().replaceFirst('Exception: ', ''));
+              }
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_reset_rounded),
+                  SizedBox(width: 10),
+                  Text('Quên mật khẩu'),
+                ],
+              ),
+              content: SizedBox(
+                width: 430,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Nhập email tài khoản. Firebase sẽ gửi liên kết để bạn tạo mật khẩu mới.',
+                      style: TextStyle(color: Colors.grey, height: 1.4),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: controller,
+                      enabled: !loading,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: loading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton.icon(
+                  onPressed: loading ? null : send,
+                  icon: loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_outlined),
+                  label: Text(loading ? 'Đang gửi...' : 'Gửi liên kết'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     emailController.dispose();
@@ -182,7 +285,15 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
 
-                    const SizedBox(height: 25),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isLoading ? null : _showForgotPasswordDialog,
+                        child: const Text('Quên mật khẩu?'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
 
                     SizedBox(
                       width: double.infinity,

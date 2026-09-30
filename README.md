@@ -1,17 +1,17 @@
-# student_management
+# Student Management System
 
-A new Flutter project.
+Hệ thống quản lý sinh viên bằng Flutter Web + Firebase.
 
-## Getting Started
+Bản này bao gồm các chức năng chính của project và nhóm mở rộng: quên/đổi mật khẩu, lớp học phần, phòng học, kiểm tra trùng lịch khi đăng ký, giới hạn tín chỉ/sĩ số, môn tiên quyết, lịch thi, GPA/kết quả học tập, thông báo đã đọc, lịch sử thanh toán, xuất Excel/PDF, nhập Excel và nhật ký hệ thống.
 
-This project is a starting point for a Flutter application.
+**Không có module quản lý giảng viên** vì phạm vi dự án chỉ quản lý sinh viên.
 
-A few resources to get you started if this is your first Flutter project:
+Xem hướng dẫn và danh sách chức năng chi tiết trong `NEW_FEATURES.md`.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Chạy project
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter clean
+flutter pub get
+flutter run -d chrome --web-port 8080
+```

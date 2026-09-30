@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../firebase_options.dart';
+import 'audit_log_service.dart';
 
 class AccountService {
   final FirebaseFirestore _firestore =
@@ -53,6 +54,14 @@ class AccountService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      await AuditLogService.log(
+        action: 'create',
+        module: 'account',
+        targetId: uid,
+        description: 'Tạo tài khoản sinh viên ${studentCode.trim()}',
+        details: {'email': email.trim(), 'studentId': studentId},
+      );
+
       await secondaryAuth.signOut();
     } finally {
       if (secondaryApp != null) {
@@ -69,6 +78,13 @@ class AccountService {
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(
+      action: 'update',
+      module: 'account',
+      targetId: uid,
+      description: isActive ? 'Mở khóa tài khoản' : 'Khóa tài khoản',
+      details: {'isActive': isActive},
+    );
   }
 
   Future<void> changeRole({
@@ -79,5 +95,12 @@ class AccountService {
       'role': role,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(
+      action: 'update',
+      module: 'account',
+      targetId: uid,
+      description: 'Đổi vai trò tài khoản thành $role',
+      details: {'role': role},
+    );
   }
 }

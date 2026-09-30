@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
+import '../../services/audit_log_service.dart';
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -61,6 +64,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     'phone': phone,
                   }, SetOptions(merge: true));
                 }
+
+                await AuditLogService.log(
+                  action: 'update',
+                  module: 'profile',
+                  targetId: uid,
+                  description: 'Cập nhật thông tin cá nhân',
+                  details: {'fullName': name, 'phone': phone},
+                );
 
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
@@ -134,6 +145,149 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+
+  Future<void> _changePassword() async {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool loading = false;
+    bool obscure = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> save() async {
+              final current = currentController.text;
+              final next = newController.text.trim();
+              final confirm = confirmController.text.trim();
+
+              if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+                _showMessage('Vui lòng nhập đầy đủ thông tin.');
+                return;
+              }
+              if (next.length < 6) {
+                _showMessage('Mật khẩu mới phải có ít nhất 6 ký tự.');
+                return;
+              }
+              if (next != confirm) {
+                _showMessage('Xác nhận mật khẩu chưa khớp.');
+                return;
+              }
+
+              try {
+                setDialogState(() => loading = true);
+                await AuthService().changePassword(
+                  currentPassword: current,
+                  newPassword: next,
+                );
+                await AuditLogService.log(
+                  action: 'change_password',
+                  module: 'account',
+                  description: 'Người dùng đổi mật khẩu',
+                );
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+                _showMessage('Đổi mật khẩu thành công.');
+              } on FirebaseAuthException catch (e) {
+                if (dialogContext.mounted) {
+                  setDialogState(() => loading = false);
+                }
+                String message = 'Không thể đổi mật khẩu.';
+                if (e.code == 'wrong-password' ||
+                    e.code == 'invalid-credential') {
+                  message = 'Mật khẩu hiện tại không đúng.';
+                } else if (e.code == 'weak-password') {
+                  message = 'Mật khẩu mới chưa đủ mạnh.';
+                } else if (e.code == 'requires-recent-login') {
+                  message = 'Phiên đăng nhập đã cũ. Vui lòng đăng xuất và đăng nhập lại.';
+                }
+                _showMessage(message);
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  setDialogState(() => loading = false);
+                }
+                _showMessage(e.toString().replaceFirst('Exception: ', ''));
+              }
+            }
+
+            InputDecoration decoration(String label, IconData icon) {
+              return InputDecoration(
+                labelText: label,
+                prefixIcon: Icon(icon),
+                suffixIcon: IconButton(
+                  onPressed: () => setDialogState(() => obscure = !obscure),
+                  icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                ),
+              );
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.password_rounded),
+                  SizedBox(width: 10),
+                  Text('Đổi mật khẩu'),
+                ],
+              ),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentController,
+                      enabled: !loading,
+                      obscureText: obscure,
+                      decoration: decoration('Mật khẩu hiện tại', Icons.lock_outline),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: newController,
+                      enabled: !loading,
+                      obscureText: obscure,
+                      decoration: decoration('Mật khẩu mới', Icons.key_outlined),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: confirmController,
+                      enabled: !loading,
+                      obscureText: obscure,
+                      decoration: decoration('Xác nhận mật khẩu mới', Icons.verified_user_outlined),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: loading ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton.icon(
+                  onPressed: loading ? null : save,
+                  icon: loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(loading ? 'Đang lưu...' : 'Đổi mật khẩu'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
@@ -179,10 +333,20 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _edit(data),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Chỉnh sửa'),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _changePassword,
+                        icon: const Icon(Icons.password_outlined),
+                        label: const Text('Đổi mật khẩu'),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton.icon(
+                        onPressed: () => _edit(data),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Chỉnh sửa'),
+                      ),
+                    ],
                   ),
                 ],
               ),

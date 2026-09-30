@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'audit_log_service.dart';
 
 class TuitionService {
   final FirebaseFirestore _firestore =
@@ -140,6 +143,18 @@ class TuitionService {
     );
 
     await batch.commit();
+    await AuditLogService.log(
+      action: oldRate.exists ? 'update' : 'create',
+      module: 'tuition',
+      targetId: code,
+      description: '${oldRate.exists ? 'Cập nhật' : 'Tạo'} cấu hình học kỳ $code',
+      details: {
+        'semesterName': semesterName.trim(),
+        'pricePerCredit': pricePerCredit,
+        'dueDate': dueDate.toIso8601String(),
+        'isActive': isActive,
+      },
+    );
   }
 
   // =========================================================
@@ -388,6 +403,39 @@ class TuitionService {
         merge: true,
       ),
     );
+
+    final oldPaid = (old.data()?['paidAmount'] as num? ?? 0).toDouble();
+    final paymentDelta = paidAmount - oldPaid;
+    if (paymentDelta > 0) {
+      await _firestore.collection('tuition_payments').add({
+        'tuitionId': tuitionId,
+        'studentId': studentId,
+        'studentCode': studentCode,
+        'studentName': studentName,
+        'semesterCode': semesterCode,
+        'semesterName': calculated['semesterName'],
+        'amount': paymentDelta,
+        'method': 'admin_update',
+        'transactionCode': '',
+        'status': 'success',
+        'paidAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'createdBy': FirebaseAuth.instance.currentUser?.uid ?? '',
+      });
+    }
+
+    await AuditLogService.log(
+      action: old.exists ? 'update' : 'create',
+      module: 'tuition',
+      targetId: tuitionId,
+      description: '${old.exists ? 'Cập nhật' : 'Tạo'} học phí $studentCode - $semesterCode',
+      details: {
+        'totalAmount': totalAmount,
+        'paidAmount': paidAmount,
+        'remainingAmount': remainingAmount,
+        'status': status,
+      },
+    );
   }
 
   // =========================================================
@@ -436,26 +484,45 @@ class TuitionService {
       );
     }
 
-    await ref.update({
-      'paidAmount':
-          totalAmount,
-
-      'remainingAmount':
-          0,
-
-      'status':
-          'paid',
-
-      // Thanh toán giả lập để demo
-      'paymentMethod':
-          'mock',
-
-      'paidAt':
-          FieldValue.serverTimestamp(),
-
-      'updatedAt':
-          FieldValue.serverTimestamp(),
+    final previousPaid = (data['paidAmount'] as num? ?? 0).toDouble();
+    final paymentAmount = (totalAmount - previousPaid).clamp(0, double.infinity).toDouble();
+    final batch = _firestore.batch();
+    batch.update(ref, {
+      'paidAmount': totalAmount,
+      'remainingAmount': 0,
+      'status': 'paid',
+      'paymentMethod': 'mock',
+      'paidAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (paymentAmount > 0) {
+      final paymentRef = _firestore.collection('tuition_payments').doc();
+      batch.set(paymentRef, {
+        'tuitionId': tuitionId,
+        'studentId': data['studentId'] ?? '',
+        'studentCode': data['studentCode'] ?? '',
+        'studentName': data['studentName'] ?? '',
+        'semesterCode': data['semesterCode'] ?? '',
+        'semesterName': data['semesterName'] ?? '',
+        'amount': paymentAmount,
+        'method': 'mock',
+        'transactionCode': 'DEMO-${DateTime.now().millisecondsSinceEpoch}',
+        'status': 'success',
+        'paidAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'createdBy': FirebaseAuth.instance.currentUser?.uid ?? '',
+      });
+    }
+
+    await batch.commit();
+    await AuditLogService.log(
+      action: 'create_payment',
+      module: 'tuition',
+      targetId: tuitionId,
+      description: 'Thanh toán demo học phí ${data['studentCode'] ?? ''}',
+      details: {'amount': paymentAmount, 'method': 'mock'},
+    );
   }
 
   // =========================================================
@@ -469,5 +536,11 @@ class TuitionService {
         .collection('tuition')
         .doc(id)
         .delete();
+    await AuditLogService.log(
+      action: 'delete',
+      module: 'tuition',
+      targetId: id,
+      description: 'Xóa hồ sơ học phí',
+    );
   }
 }

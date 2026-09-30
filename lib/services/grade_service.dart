@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'audit_log_service.dart';
+
 class GradeService {
   final FirebaseFirestore _firestore =
       FirebaseFirestore.instance;
@@ -165,6 +167,18 @@ class GradeService {
         'credits':
             registration['credits'] ?? 0,
 
+        'semesterCode':
+            registration['semesterCode'] ?? '',
+
+        'semesterName':
+            registration['semesterName'] ?? '',
+
+        'sectionId':
+            registration['sectionId'] ?? '',
+
+        'sectionCode':
+            registration['sectionCode'] ?? '',
+
         'midtermScore':
             midterm,
 
@@ -184,6 +198,19 @@ class GradeService {
         merge: true,
       ),
     );
+
+    await AuditLogService.log(
+      action: 'update',
+      module: 'grades',
+      targetId: registrationId,
+      description: 'Cập nhật điểm ${registration['studentCode'] ?? ''} - ${registration['subjectCode'] ?? ''}',
+      details: {
+        'midtermScore': midterm,
+        'finalScore': finalScore,
+        'averageScore': average,
+        'letterGrade': letterGrade,
+      },
+    );
   }
 
   // =========================================================
@@ -197,5 +224,11 @@ class GradeService {
         .collection('grades')
         .doc(registrationId)
         .delete();
+    await AuditLogService.log(
+      action: 'delete',
+      module: 'grades',
+      targetId: registrationId,
+      description: 'Xóa điểm của một đăng ký môn học',
+    );
   }
 }

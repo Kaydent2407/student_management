@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'audit_log_service.dart';
+
 class DepartmentService {
   final FirebaseFirestore _firestore =
       FirebaseFirestore.instance;
@@ -36,12 +38,13 @@ class DepartmentService {
       throw Exception('Mã khoa đã tồn tại.');
     }
 
-    await _firestore.collection('departments').add({
+    final ref = await _firestore.collection('departments').add({
       'departmentCode': code,
       'departmentName': name,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(action: 'create', module: 'departments', targetId: ref.id, description: 'Thêm khoa $code');
   }
 
   Future<void> updateDepartment({
@@ -76,6 +79,7 @@ class DepartmentService {
       'departmentName': name,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(action: 'update', module: 'departments', targetId: id, description: 'Cập nhật khoa $code');
   }
 
   Future<void> deleteDepartment(String id) async {
@@ -94,10 +98,12 @@ class DepartmentService {
       );
     }
 
+    final old = await _firestore.collection('departments').doc(id).get();
     await _firestore
         .collection('departments')
         .doc(id)
         .delete();
+    await AuditLogService.log(action: 'delete', module: 'departments', targetId: id, description: 'Xóa khoa ${old.data()?['departmentCode'] ?? ''}');
   }
 
   // =========================================================
@@ -134,13 +140,14 @@ class DepartmentService {
       );
     }
 
-    await _firestore.collection('majors').add({
+    final ref = await _firestore.collection('majors').add({
       'majorCode': code,
       'majorName': name,
       'departmentId': departmentId,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(action: 'create', module: 'majors', targetId: ref.id, description: 'Thêm chuyên ngành $code');
   }
 
   Future<void> updateMajor({
@@ -179,6 +186,7 @@ class DepartmentService {
       'departmentId': departmentId,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await AuditLogService.log(action: 'update', module: 'majors', targetId: id, description: 'Cập nhật chuyên ngành $code');
   }
 
   Future<void> deleteMajor(String id) async {
@@ -212,9 +220,11 @@ class DepartmentService {
       );
     }
 
+    final old = await _firestore.collection('majors').doc(id).get();
     await _firestore
         .collection('majors')
         .doc(id)
         .delete();
+    await AuditLogService.log(action: 'delete', module: 'majors', targetId: id, description: 'Xóa chuyên ngành ${old.data()?['majorCode'] ?? ''}');
   }
 }
