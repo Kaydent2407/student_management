@@ -102,6 +102,10 @@ class Sidebar extends StatelessWidget {
         'icon': Icons.payments_outlined,
       },
       {
+        'title': 'Điểm danh',
+        'icon': Icons.fact_check_outlined,
+      },
+      {
         'title': 'Thông báo',
         'icon': Icons.notifications_outlined,
       },
