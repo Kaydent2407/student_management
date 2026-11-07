@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Storix",
+    "slug": "storix",
+    "scheme": "storix",
+    "version": "1.8.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.storix.inventory",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "name": "Storix – Quản lý kho hàng",
+      "favicon": "./assets/brand/favicon.png"
+    },
+    "experiments": {
+      "tsconfigPaths": false
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép Storix sử dụng camera để quét mã sản phẩm",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "icon": "./assets/brand/app-icon.png"
+  }
+}

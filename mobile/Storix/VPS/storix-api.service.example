@@ -1,0 +1,21 @@
+# TÙY CHỌN: chỉ dùng nếu API chưa có systemd service đang vận hành.
+# Không cài thêm service trùng nếu backend API của bạn đã chạy trong Docker hoặc systemd.
+# Điều chỉnh đường dẫn dotnet bằng `which dotnet` trên VPS.
+[Unit]
+Description=Storix ASP.NET Core API
+After=network.target
+
+[Service]
+Type=simple
+User=storix
+WorkingDirectory=/opt/storix-api
+ExecStart=/usr/bin/dotnet /opt/storix-api/Storix.Api.dll
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+EnvironmentFile=/etc/storix-api/storix-api.env
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
